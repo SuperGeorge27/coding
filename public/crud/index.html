@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Supabase CRUD</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Noto Sans Thai', 'sans-serif']
+          },
+          colors: {
+            ink: '#070a12',
+            panel: '#0d1220',
+            line: '#243047',
+            brand: '#38bdf8',
+            mint: '#34d399'
+          }
+        }
+      }
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body class="min-h-screen bg-ink text-slate-100 font-sans">
+  <main class="min-h-screen px-4 py-8 sm:px-6 lg:px-8">
+    <section class="mx-auto max-w-6xl">
+      <div class="mb-8 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <p class="mb-2 text-sm font-semibold uppercase tracking-wider text-brand">Supabase REST CRUD</p>
+          <h1 class="text-3xl font-bold text-white sm:text-4xl">จัดการข้อมูลรายการ</h1>
+          <p class="mt-3 max-w-2xl text-sm leading-6 text-slate-400">
+            เพิ่ม แก้ไข ลบ และค้นหาข้อมูลที่บันทึกลง Supabase ผ่าน REST API
+          </p>
+        </div>
+
+        <button id="reloadBtn" class="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-line bg-slate-900 px-4 text-sm font-semibold text-slate-100 transition hover:border-brand hover:text-brand focus:outline-none focus:ring-2 focus:ring-brand/50">
+          <i class="fa-solid fa-rotate-right"></i>
+          โหลดข้อมูล
+        </button>
+      </div>
+
+      <div class="grid gap-6 lg:grid-cols-[380px_1fr]">
+        <form id="itemForm" class="rounded-lg border border-line bg-panel p-5 shadow-2xl shadow-black/30">
+          <input type="hidden" id="itemId">
+          <input type="hidden" id="currentImageUrl">
+          <div class="mb-5">
+            <h2 id="formTitle" class="text-xl font-bold text-white">เพิ่มรายการใหม่</h2>
+            <p class="mt-1 text-sm text-slate-400">กรอกข้อมูลให้ครบแล้วกดบันทึก</p>
+          </div>
+
+          <label class="mb-4 block">
+            <span class="mb-2 block text-sm font-semibold text-slate-200">ชื่อรายการ</span>
+            <input id="titleInput" type="text" required maxlength="120" placeholder="เช่น งานออกแบบหน้าเว็บ"
+              class="h-11 w-full rounded-md border border-line bg-slate-950 px-3 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-brand focus:ring-2 focus:ring-brand/20">
+          </label>
+
+          <label class="mb-4 block">
+            <span class="mb-2 block text-sm font-semibold text-slate-200">รายละเอียด</span>
+            <textarea id="descriptionInput" rows="5" maxlength="500" placeholder="รายละเอียดเพิ่มเติม"
+              class="w-full resize-none rounded-md border border-line bg-slate-950 px-3 py-3 text-sm leading-6 text-white outline-none transition placeholder:text-slate-600 focus:border-brand focus:ring-2 focus:ring-brand/20"></textarea>
+          </label>
+
+          <label class="mb-5 block">
+            <span class="mb-2 block text-sm font-semibold text-slate-200">สถานะ</span>
+            <select id="statusInput"
+              class="h-11 w-full rounded-md border border-line bg-slate-950 px-3 text-sm text-white outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20">
+              <option value="pending">รอดำเนินการ</option>
+              <option value="progress">กำลังทำ</option>
+              <option value="done">เสร็จแล้ว</option>
+            </select>
+          </label>
+
+          <label class="mb-5 block">
+            <span class="mb-2 block text-sm font-semibold text-slate-200">รูปภาพ</span>
+            <div class="rounded-md border border-dashed border-line bg-slate-950 p-3">
+              <div id="imagePreviewWrap" class="mb-3 hidden overflow-hidden rounded-md border border-line bg-slate-900">
+                <img id="imagePreview" src="" alt="ตัวอย่างรูปภาพ" class="h-44 w-full object-cover">
+              </div>
+              <input id="imageInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif"
+                class="block w-full text-sm text-slate-300 file:mr-4 file:h-10 file:rounded-md file:border-0 file:bg-brand file:px-4 file:text-sm file:font-bold file:text-slate-950 hover:file:bg-sky-300">
+              <p class="mt-2 text-xs text-slate-500">รองรับ JPG, PNG, WebP, GIF ขนาดไม่เกิน 5MB</p>
+            </div>
+          </label>
+
+          <div class="flex gap-3">
+            <button type="submit" class="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-md bg-brand px-4 text-sm font-bold text-slate-950 transition hover:bg-sky-300 focus:outline-none focus:ring-2 focus:ring-brand/50">
+              <i class="fa-solid fa-floppy-disk"></i>
+              บันทึก
+            </button>
+            <button id="cancelBtn" type="button" class="hidden h-11 items-center justify-center gap-2 rounded-md border border-line px-4 text-sm font-semibold text-slate-200 transition hover:border-rose-400 hover:text-rose-300">
+              <i class="fa-solid fa-xmark"></i>
+              ยกเลิก
+            </button>
+          </div>
+        </form>
+
+        <section class="rounded-lg border border-line bg-panel shadow-2xl shadow-black/30">
+          <div class="flex flex-col gap-4 border-b border-line p-5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 class="text-xl font-bold text-white">รายการทั้งหมด</h2>
+              <p id="countText" class="mt-1 text-sm text-slate-400">กำลังโหลดข้อมูล</p>
+            </div>
+            <label class="relative block sm:w-72">
+              <i class="fa-solid fa-magnifying-glass pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"></i>
+              <input id="searchInput" type="search" placeholder="ค้นหา"
+                class="h-11 w-full rounded-md border border-line bg-slate-950 pl-10 pr-3 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-brand focus:ring-2 focus:ring-brand/20">
+            </label>
+          </div>
+
+          <div id="loadingState" class="p-8 text-center text-sm text-slate-400">
+            <i class="fa-solid fa-spinner fa-spin mr-2"></i>
+            กำลังโหลดข้อมูล
+          </div>
+
+          <div id="emptyState" class="hidden p-8 text-center">
+            <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-line bg-slate-950 text-brand">
+              <i class="fa-regular fa-folder-open text-xl"></i>
+            </div>
+            <h3 class="text-lg font-bold text-white">ยังไม่มีข้อมูล</h3>
+            <p class="mt-1 text-sm text-slate-400">เพิ่มรายการแรกจากฟอร์มด้านซ้าย</p>
+          </div>
+
+          <div id="tableWrap" class="hidden overflow-x-auto">
+            <table class="min-w-full divide-y divide-line">
+              <thead class="bg-slate-950/60">
+                <tr>
+                  <th class="px-5 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-400">รูปภาพ</th>
+                  <th class="px-5 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-400">ชื่อรายการ</th>
+                  <th class="px-5 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-400">สถานะ</th>
+                  <th class="px-5 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-400">วันที่สร้าง</th>
+                  <th class="px-5 py-3 text-right text-xs font-bold uppercase tracking-wider text-slate-400">จัดการ</th>
+                </tr>
+              </thead>
+              <tbody id="itemsTable" class="divide-y divide-line"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <footer class="border-t border-line bg-slate-950 px-4 py-5 text-center text-sm text-slate-400">
+    พัฒนาโดย: Yourname
+  </footer>
+
+  <script>
+    const SUPABASE_URL = 'https://nswwrrypxaixajeujbyu.supabase.co/rest/v1';
+    const SUPABASE_PROJECT_URL = 'https://nswwrrypxaixajeujbyu.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_qbZrKzBeo88ZpLQICsRMCQ_5A8etZdO';
+    const TABLE_NAME = 'items';
+    const STORAGE_BUCKET = 'item-images';
+
+    const headers = {
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${SUPABASE_KEY}`,
+      'Content-Type': 'application/json',
+      Prefer: 'return=representation'
+    };
+
+    const form = document.getElementById('itemForm');
+    const itemId = document.getElementById('itemId');
+    const currentImageUrl = document.getElementById('currentImageUrl');
+    const titleInput = document.getElementById('titleInput');
+    const descriptionInput = document.getElementById('descriptionInput');
+    const statusInput = document.getElementById('statusInput');
+    const imageInput = document.getElementById('imageInput');
+    const imagePreview = document.getElementById('imagePreview');
+    const imagePreviewWrap = document.getElementById('imagePreviewWrap');
+    const formTitle = document.getElementById('formTitle');
+    const cancelBtn = document.getElementById('cancelBtn');
+    const reloadBtn = document.getElementById('reloadBtn');
+    const searchInput = document.getElementById('searchInput');
+    const countText = document.getElementById('countText');
+    const itemsTable = document.getElementById('itemsTable');
+    const loadingState = document.getElementById('loadingState');
+    const emptyState = document.getElementById('emptyState');
+    const tableWrap = document.getElementById('tableWrap');
+
+    let items = [];
+
+    const statusMap = {
+      pending: { text: 'รอดำเนินการ', className: 'border-amber-400/30 bg-amber-400/10 text-amber-200' },
+      progress: { text: 'กำลังทำ', className: 'border-sky-400/30 bg-sky-400/10 text-sky-200' },
+      done: { text: 'เสร็จแล้ว', className: 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200' }
+    };
+
+    function apiUrl(query = '') {
+      return `${SUPABASE_URL}/${TABLE_NAME}${query}`;
+    }
+
+    function showToast(icon, title) {
+      Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon,
+        title,
+        showConfirmButton: false,
+        timer: 1800,
+        timerProgressBar: true,
+        background: '#0d1220',
+        color: '#e2e8f0'
+      });
+    }
+
+    async function request(url, options = {}) {
+      const response = await fetch(url, {
+        ...options,
+        headers: { ...headers, ...(options.headers || {}) }
+      });
+
+      if (!response.ok) {
+        const detail = await response.text();
+        throw new Error(detail || 'ไม่สามารถเชื่อมต่อ Supabase ได้');
+      }
+
+      if (response.status === 204) return null;
+      return response.json();
+    }
+
+    async function loadItems() {
+      loadingState.classList.remove('hidden');
+      emptyState.classList.add('hidden');
+      tableWrap.classList.add('hidden');
+      countText.textContent = 'กำลังโหลดข้อมูล';
+
+      try {
+        items = await request(apiUrl('?select=*&order=created_at.desc'));
+        renderItems();
+      } catch (error) {
+        items = [];
+        renderItems();
+        Swal.fire({
+          icon: 'error',
+          title: 'โหลดข้อมูลไม่สำเร็จ',
+          text: 'ตรวจสอบชื่อตาราง items, RLS policy และ Supabase key',
+          background: '#0d1220',
+          color: '#e2e8f0',
+          confirmButtonColor: '#38bdf8'
+        });
+        console.error(error);
+      } finally {
+        loadingState.classList.add('hidden');
+      }
+    }
+
+    function renderItems() {
+      const keyword = searchInput.value.trim().toLowerCase();
+      const filtered = items.filter((item) => {
+        return [item.title, item.description, item.status]
+          .filter(Boolean)
+          .some((value) => String(value).toLowerCase().includes(keyword));
+      });
+
+      countText.textContent = `พบ ${filtered.length} รายการ`;
+      itemsTable.innerHTML = '';
+
+      if (!filtered.length) {
+        emptyState.classList.remove('hidden');
+        tableWrap.classList.add('hidden');
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+      tableWrap.classList.remove('hidden');
+
+      filtered.forEach((item) => {
+        const status = statusMap[item.status] || statusMap.pending;
+        const createdAt = item.created_at
+          ? new Intl.DateTimeFormat('th-TH', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(item.created_at))
+          : '-';
+        const imageCell = item.image_url
+          ? `<img src="${escapeAttribute(item.image_url)}" alt="${escapeAttribute(item.title || 'รูปภาพ')}" class="h-16 w-20 rounded-md object-cover">`
+          : `<div class="flex h-16 w-20 items-center justify-center rounded-md border border-line bg-slate-950 text-slate-600"><i class="fa-regular fa-image"></i></div>`;
+
+        const row = document.createElement('tr');
+        row.className = 'transition hover:bg-slate-950/45';
+        row.innerHTML = `
+          <td class="px-5 py-4 align-top">${imageCell}</td>
+          <td class="max-w-sm px-5 py-4 align-top">
+            <div class="font-semibold text-white">${escapeHtml(item.title || '-')}</div>
+            <div class="mt-1 line-clamp-2 text-sm leading-6 text-slate-400">${escapeHtml(item.description || '-')}</div>
+          </td>
+          <td class="px-5 py-4 align-top">
+            <span class="inline-flex whitespace-nowrap rounded-full border px-3 py-1 text-xs font-bold ${status.className}">${status.text}</span>
+          </td>
+          <td class="whitespace-nowrap px-5 py-4 align-top text-sm text-slate-400">${createdAt}</td>
+          <td class="whitespace-nowrap px-5 py-4 text-right align-top">
+            <button class="mr-2 inline-flex h-9 w-9 items-center justify-center rounded-md border border-line text-slate-200 transition hover:border-brand hover:text-brand" data-action="edit" data-id="${item.id}" aria-label="แก้ไข">
+              <i class="fa-solid fa-pen-to-square"></i>
+            </button>
+            <button class="inline-flex h-9 w-9 items-center justify-center rounded-md border border-line text-slate-200 transition hover:border-rose-400 hover:text-rose-300" data-action="delete" data-id="${item.id}" aria-label="ลบ">
+              <i class="fa-solid fa-trash-can"></i>
+            </button>
+          </td>
+        `;
+        itemsTable.appendChild(row);
+      });
+    }
+
+    function escapeHtml(value) {
+      const div = document.createElement('div');
+      div.textContent = value;
+      return div.innerHTML;
+    }
+
+    function escapeAttribute(value) {
+      return escapeHtml(value).replace(/"/g, '&quot;');
+    }
+
+    function storagePublicUrl(path) {
+      return `${SUPABASE_PROJECT_URL}/storage/v1/object/public/${STORAGE_BUCKET}/${path}`;
+    }
+
+    async function uploadImage(file) {
+      if (!file) return currentImageUrl.value || null;
+
+      if (!file.type.startsWith('image/')) {
+        throw new Error('กรุณาเลือกไฟล์รูปภาพเท่านั้น');
+      }
+
+      if (file.size > 5 * 1024 * 1024) {
+        throw new Error('รูปภาพต้องมีขนาดไม่เกิน 5MB');
+      }
+
+      const extension = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const filePath = `${Date.now()}-${crypto.randomUUID()}.${extension}`;
+      const response = await fetch(`${SUPABASE_PROJECT_URL}/storage/v1/object/${STORAGE_BUCKET}/${filePath}`, {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_KEY,
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+          'Content-Type': file.type,
+          'x-upsert': 'true'
+        },
+        body: file
+      });
+
+      if (!response.ok) {
+        const detail = await response.text();
+        throw new Error(detail || 'อัปโหลดรูปภาพไม่สำเร็จ');
+      }
+
+      return storagePublicUrl(filePath);
+    }
+
+    function resetForm() {
+      form.reset();
+      itemId.value = '';
+      currentImageUrl.value = '';
+      imagePreview.src = '';
+      imagePreviewWrap.classList.add('hidden');
+      formTitle.textContent = 'เพิ่มรายการใหม่';
+      cancelBtn.classList.add('hidden');
+      cancelBtn.classList.remove('inline-flex');
+      titleInput.focus();
+    }
+
+    async function saveItem(event) {
+      event.preventDefault();
+
+      const payload = {
+        title: titleInput.value.trim(),
+        description: descriptionInput.value.trim(),
+        status: statusInput.value,
+        image_url: currentImageUrl.value || null
+      };
+
+      if (!payload.title) {
+        showToast('warning', 'กรุณากรอกชื่อรายการ');
+        return;
+      }
+
+      try {
+        payload.image_url = await uploadImage(imageInput.files[0]);
+
+        if (itemId.value) {
+          await request(apiUrl(`?id=eq.${encodeURIComponent(itemId.value)}`), {
+            method: 'PATCH',
+            body: JSON.stringify(payload)
+          });
+          showToast('success', 'แก้ไขข้อมูลแล้ว');
+        } else {
+          await request(apiUrl(), {
+            method: 'POST',
+            body: JSON.stringify(payload)
+          });
+          showToast('success', 'บันทึกข้อมูลแล้ว');
+        }
+
+        resetForm();
+        await loadItems();
+      } catch (error) {
+        Swal.fire({
+          icon: 'error',
+          title: 'บันทึกไม่สำเร็จ',
+          text: error.message || 'ตรวจสอบโครงสร้างตาราง สิทธิ์การเขียนข้อมูล และ Storage policy',
+          background: '#0d1220',
+          color: '#e2e8f0',
+          confirmButtonColor: '#38bdf8'
+        });
+        console.error(error);
+      }
+    }
+
+    function editItem(id) {
+      const item = items.find((entry) => String(entry.id) === String(id));
+      if (!item) return;
+
+      itemId.value = item.id;
+      titleInput.value = item.title || '';
+      descriptionInput.value = item.description || '';
+      statusInput.value = item.status || 'pending';
+      currentImageUrl.value = item.image_url || '';
+      imageInput.value = '';
+      if (item.image_url) {
+        imagePreview.src = item.image_url;
+        imagePreviewWrap.classList.remove('hidden');
+      } else {
+        imagePreview.src = '';
+        imagePreviewWrap.classList.add('hidden');
+      }
+      formTitle.textContent = 'แก้ไขรายการ';
+      cancelBtn.classList.remove('hidden');
+      cancelBtn.classList.add('inline-flex');
+      titleInput.focus();
+    }
+
+    async function deleteItem(id) {
+      const result = await Swal.fire({
+        icon: 'warning',
+        title: 'ยืนยันการลบ',
+        text: 'ข้อมูลที่ลบแล้วไม่สามารถกู้คืนจากหน้านี้ได้',
+        showCancelButton: true,
+        confirmButtonText: 'ลบข้อมูล',
+        cancelButtonText: 'ยกเลิก',
+        background: '#0d1220',
+        color: '#e2e8f0',
+        confirmButtonColor: '#f43f5e',
+        cancelButtonColor: '#334155'
+      });
+
+      if (!result.isConfirmed) return;
+
+      try {
+        await request(apiUrl(`?id=eq.${encodeURIComponent(id)}`), { method: 'DELETE' });
+        showToast('success', 'ลบข้อมูลแล้ว');
+        await loadItems();
+      } catch (error) {
+        Swal.fire({
+          icon: 'error',
+          title: 'ลบไม่สำเร็จ',
+          text: 'ตรวจสอบสิทธิ์การลบข้อมูลใน Supabase',
+          background: '#0d1220',
+          color: '#e2e8f0',
+          confirmButtonColor: '#38bdf8'
+        });
+        console.error(error);
+      }
+    }
+
+    form.addEventListener('submit', saveItem);
+    cancelBtn.addEventListener('click', resetForm);
+    reloadBtn.addEventListener('click', loadItems);
+    searchInput.addEventListener('input', renderItems);
+    imageInput.addEventListener('change', () => {
+      const file = imageInput.files[0];
+      if (!file) {
+        imagePreview.src = currentImageUrl.value || '';
+        imagePreviewWrap.classList.toggle('hidden', !currentImageUrl.value);
+        return;
+      }
+
+      imagePreview.src = URL.createObjectURL(file);
+      imagePreviewWrap.classList.remove('hidden');
+    });
+    itemsTable.addEventListener('click', (event) => {
+      const button = event.target.closest('button[data-action]');
+      if (!button) return;
+
+      if (button.dataset.action === 'edit') editItem(button.dataset.id);
+      if (button.dataset.action === 'delete') deleteItem(button.dataset.id);
+    });
+
+    loadItems();
+  </script>
+</body>
+</html>
