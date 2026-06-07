@@ -30,6 +30,18 @@
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body class="min-h-screen bg-ink text-slate-100 font-sans">
+  <script>
+    // Session Check
+    if (!localStorage.getItem('supabase_token')) {
+      window.location.href = 'login.html';
+    }
+    
+    function logout() {
+      localStorage.removeItem('supabase_token');
+      localStorage.removeItem('supabase_user');
+      window.location.href = 'login.html';
+    }
+  </script>
   <main class="min-h-screen px-4 py-8 sm:px-6 lg:px-8">
     <section class="mx-auto max-w-6xl">
       <div class="mb-8 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
@@ -41,10 +53,16 @@
           </p>
         </div>
 
-        <button id="reloadBtn" class="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-line bg-slate-900 px-4 text-sm font-semibold text-slate-100 transition hover:border-brand hover:text-brand focus:outline-none focus:ring-2 focus:ring-brand/50">
-          <i class="fa-solid fa-rotate-right"></i>
-          โหลดข้อมูล
-        </button>
+        <div class="flex items-center gap-3">
+          <button id="reloadBtn" class="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-line bg-slate-900 px-4 text-sm font-semibold text-slate-100 transition hover:border-brand hover:text-brand focus:outline-none focus:ring-2 focus:ring-brand/50">
+            <i class="fa-solid fa-rotate-right"></i>
+            โหลดข้อมูล
+          </button>
+          <button onclick="logout()" class="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-line bg-slate-900 px-4 text-sm font-semibold text-rose-400 transition hover:border-rose-400 hover:bg-rose-400/10 focus:outline-none focus:ring-2 focus:ring-rose-400/50">
+            <i class="fa-solid fa-right-from-bracket"></i>
+            ออกจากระบบ
+          </button>
+        </div>
       </div>
 
       <div class="grid gap-6 lg:grid-cols-[380px_1fr]">
@@ -160,7 +178,7 @@
 
     const headers = {
       apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
+      Authorization: `Bearer ${localStorage.getItem('supabase_token') || SUPABASE_KEY}`,
       'Content-Type': 'application/json',
       Prefer: 'return=representation'
     };
@@ -215,6 +233,11 @@
         ...options,
         headers: { ...headers, ...(options.headers || {}) }
       });
+
+      if (response.status === 401) {
+        logout();
+        return;
+      }
 
       if (!response.ok) {
         const detail = await response.text();
@@ -336,7 +359,7 @@
         method: 'POST',
         headers: {
           apikey: SUPABASE_KEY,
-          Authorization: `Bearer ${SUPABASE_KEY}`,
+          Authorization: `Bearer ${localStorage.getItem('supabase_token') || SUPABASE_KEY}`,
           'Content-Type': file.type,
           'x-upsert': 'true'
         },

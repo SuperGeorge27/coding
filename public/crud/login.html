@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>เข้าสู่ระบบ - Supabase CRUD</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Noto Sans Thai', 'sans-serif']
+          },
+          colors: {
+            ink: '#070a12',
+            panel: '#0d1220',
+            line: '#243047',
+            brand: '#38bdf8',
+            mint: '#34d399'
+          }
+        }
+      }
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body class="min-h-screen bg-ink text-slate-100 font-sans flex items-center justify-center p-4">
+  <div class="w-full max-w-md">
+    <div class="text-center mb-8">
+      <div class="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-brand/10 text-brand mb-4">
+        <i class="fa-solid fa-lock text-3xl"></i>
+      </div>
+      <h1 class="text-3xl font-bold text-white">เข้าสู่ระบบ</h1>
+      <p class="mt-2 text-slate-400">กรุณาเข้าสู่ระบบเพื่อจัดการข้อมูล</p>
+    </div>
+
+    <form id="loginForm" class="rounded-xl border border-line bg-panel p-8 shadow-2xl shadow-black/50">
+      <div class="mb-5">
+        <label for="email" class="mb-2 block text-sm font-semibold text-slate-200">อีเมล</label>
+        <div class="relative">
+          <i class="fa-solid fa-envelope absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"></i>
+          <input id="email" type="email" required placeholder="admin@example.com"
+            class="h-12 w-full rounded-lg border border-line bg-slate-950 pl-10 pr-3 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-brand focus:ring-2 focus:ring-brand/20">
+        </div>
+      </div>
+
+      <div class="mb-8">
+        <label for="password" class="mb-2 block text-sm font-semibold text-slate-200">รหัสผ่าน</label>
+        <div class="relative">
+          <i class="fa-solid fa-key absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"></i>
+          <input id="password" type="password" required placeholder="••••••••"
+            class="h-12 w-full rounded-lg border border-line bg-slate-950 pl-10 pr-3 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-brand focus:ring-2 focus:ring-brand/20">
+        </div>
+      </div>
+
+      <button type="submit" id="submitBtn" class="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-brand px-4 text-base font-bold text-slate-950 transition hover:bg-sky-300 focus:outline-none focus:ring-2 focus:ring-brand/50 disabled:opacity-50">
+        <i class="fa-solid fa-right-to-bracket"></i>
+        <span>เข้าสู่ระบบ</span>
+      </button>
+    </form>
+    
+    <p class="mt-8 text-center text-sm text-slate-500">
+      พัฒนาโดย: Yourname
+    </p>
+  </div>
+
+  <script>
+    const SUPABASE_PROJECT_URL = 'https://nswwrrypxaixajeujbyu.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_qbZrKzBeo88ZpLQICsRMCQ_5A8etZdO';
+
+    const loginForm = document.getElementById('loginForm');
+    const submitBtn = document.getElementById('submitBtn');
+
+    // Check if already logged in
+    if (localStorage.getItem('supabase_token')) {
+      window.location.href = 'index.html';
+    }
+
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+
+      if (!email || !password) return;
+
+      submitBtn.disabled = true;
+      submitBtn.querySelector('span').textContent = 'กำลังตรวจสอบ...';
+
+      try {
+        const response = await fetch(`${SUPABASE_PROJECT_URL}/auth/v1/token?grant_type=password`, {
+          method: 'POST',
+          headers: {
+            'apikey': SUPABASE_KEY,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ email, password })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error_description || data.error || 'อีเมลหรือรหัสผ่านไม่ถูกต้อง');
+        }
+
+        // Save session
+        localStorage.setItem('supabase_token', data.access_token);
+        localStorage.setItem('supabase_user', JSON.stringify(data.user));
+
+        Swal.fire({
+          icon: 'success',
+          title: 'เข้าสู่ระบบสำเร็จ',
+          text: 'กำลังพาท่านไปยังหน้าจัดการข้อมูล',
+          timer: 1500,
+          showConfirmButton: false,
+          background: '#0d1220',
+          color: '#e2e8f0'
+        }).then(() => {
+          window.location.href = 'index.html';
+        });
+
+      } catch (error) {
+        Swal.fire({
+          icon: 'error',
+          title: 'เข้าสู่ระบบไม่สำเร็จ',
+          text: error.message,
+          background: '#0d1220',
+          color: '#e2e8f0',
+          confirmButtonColor: '#38bdf8'
+        });
+        console.error(error);
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.querySelector('span').textContent = 'เข้าสู่ระบบ';
+      }
+    });
+  </script>
+</body>
+</html>
